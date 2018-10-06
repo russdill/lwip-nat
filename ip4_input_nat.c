@@ -38,7 +38,6 @@
 #include "nat/ip4_prerouting_hook.h"
 
 #if LWIP_NAT && LWIP_IPV4
-
 static int
 ip4_canforward(struct pbuf *p)
 {
@@ -181,12 +180,30 @@ ip4_input_nat(struct pbuf *p, struct netif *inp)
     LWIP_DEBUGF(IP_DEBUG, ("IP packet is a fragment (id=0x%04"X16_F" tot_len=%"U16_F" len=%"U16_F" MF=%"U16_F" offset=%"U16_F"), calling ip4_reass()\n",
                            lwip_ntohs(IPH_ID(iphdr)), p->tot_len, lwip_ntohs(IPH_LEN(iphdr)), (u16_t)!!(IPH_OFFSET(iphdr) & PP_HTONS(IP_MF)), (u16_t)((lwip_ntohs(IPH_OFFSET(iphdr)) & IP_OFFMASK) * 8)));
     /* reassemble the packet*/
-    p = ip4_reass(p);
+    /*
+     * Ugh, ip4_input has a local copy of the p pointer and a local pointer to
+     * iphdr. When we are done, those pointers still need to be valid.
+     */
+    struct pbuf *rp;
+    rp = ip4_reass(p);
     /* packet not fully reassembled yet? */
-    if (p == NULL) {
+    if (rp == NULL) {
       return 1; /* Eat packet */
     }
-    iphdr = (const struct ip_hdr *)p->payload;
+    if (rp != p) {
+      /*
+       * ok, the pointers are different. There's no real easy way to fix this.
+       * We could try swapping data, but one likely has less space than the
+       * other. Just call ip4_input again and eat the packet. It's super bad
+       * for the stack, but it avoids having to patch ip4_input.
+       */
+      STATS_DEC(ip.recv); /* Don't double stat */
+#if MIB2_STATS
+      STATS_DEC(mib2.ipinreceives);
+#endif
+      ip4_input(rp, inp);
+      return 1;
+    }
 #else /* IP_REASSEMBLY == 0, no packet fragment reassembly code present */
     pbuf_free(p);
     LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_LEVEL_SERIOUS, ("IP packet dropped since it was fragmented (0x%"X16_F") (while IP_REASSEMBLY == 0).\n",
