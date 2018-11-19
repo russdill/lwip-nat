@@ -190,7 +190,7 @@ ip4_input_nat(struct pbuf *p, struct netif *inp)
     if (rp == NULL) {
       return 1; /* Eat packet */
     }
-    if (rp != p) {
+    if (rp != p || iphdr != rp->payload) {
       /*
        * ok, the pointers are different. There's no real easy way to fix this.
        * We could try swapping data, but one likely has less space than the
@@ -202,7 +202,7 @@ ip4_input_nat(struct pbuf *p, struct netif *inp)
       STATS_DEC(mib2.ipinreceives);
 #endif
       ip4_input(rp, inp);
-      return 1;
+      return 1; /* ip4_input eats packet */
     }
 #else /* IP_REASSEMBLY == 0, no packet fragment reassembly code present */
     pbuf_free(p);
