@@ -34,7 +34,7 @@
 
 #if LWIP_NAT && LWIP_IPV4
 /**
- * Prerouting hook for IPv4 DNAT.
+ * Prerouting hook for IPv4 SNAT.
  *
  * Packets arriving with inp and localp set are destined for an IP address
  * of one of the local interfaces. If there is a NAT entry for these packets

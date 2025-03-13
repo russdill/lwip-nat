@@ -100,7 +100,7 @@ icmp4_ip4_prerouting_pcb(struct pbuf *p, struct netif *inp, struct netif *forwar
 }
 
 /**
- * Prerouting hook for IPv4 DNAT for ICMP encapsulated packets.
+ * Prerouting hook for IPv4 SNAT for ICMP encapsulated packets.
  *
  * @param icmp_chksum Pointer to encapsulating ICMP header checksum
  * @param p Incoming encapsulated IPv4 packet
